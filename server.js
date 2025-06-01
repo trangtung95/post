@@ -29,7 +29,7 @@ async function pageReload() {
   }
 }
 
-// Gửi tin nhắn qua Telegram
+// Gửi tin nhắn qua Telegram (bình thường)
 async function sendTelegramMessage(text) {
   try {
     const token = process.env.TELEGRAM_BOT_TOKEN
@@ -52,15 +52,42 @@ async function sendTelegramMessage(text) {
   }
 }
 
+// Gửi tin nhắn Telegram kèm nút inline
+async function sendTelegramMessageWithButtons(text) {
+  try {
+    const token = process.env.TELEGRAM_BOT_TOKEN
+    const chatId = process.env.TELEGRAM_CHAT_ID
+    if (!token || !chatId) {
+      console.error('Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in env')
+      return false
+    }
+
+    const url = `https://api.telegram.org/bot${token}/sendMessage`
+    const res = await axios.post(url, {
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "Nút 1", callback_data: "btn1" },
+            { text: "Nút 2", url: "https://example.com" }
+          ]
+        ]
+      }
+    })
+    return res.data.ok
+  } catch (err) {
+    console.error('Error sending Telegram message with buttons:', err.message)
+    return false
+  }
+}
+
 app.post('/data', async (req, res) => {
   try {
-    // Nhận dữ liệu bất kỳ từ body
     let data = req.body
-
-    // Chuẩn bị nội dung gửi Telegram: stringify, giữ unicode
     let text = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
 
-    // Gửi lên Telegram
     const success = await sendTelegramMessage(text)
 
     if (success) {
@@ -74,9 +101,27 @@ app.post('/data', async (req, res) => {
   }
 })
 
+// Route test gửi tin nhắn kèm nút
+app.get('/send-buttons', async (req, res) => {
+  const text = "Tin nhắn có nút inline:"
+  const success = await sendTelegramMessageWithButtons(text)
+
+  if (success) {
+    res.send('Đã gửi tin nhắn có nút inline tới Telegram')
+  } else {
+    res.status(500).send('Gửi tin nhắn thất bại')
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`)
 })
+
+// Tự động reload page mỗi 30 phút
+setInterval(async () => {
+  await pageReload()
+}, 30 * 60 * 1000)
+
 
 // Tự động reload page mỗi 30 phút
 setInterval(async () => {
