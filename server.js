@@ -103,10 +103,15 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server chạy tại http://localhost:${PORT} - Sẵn sàng bắn data lớn vô Telegram!`);
+// Khởi động server với xử lý lỗi port đã bị chiếm
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server chạy tại http://localhost:${PORT} - Sẵn sàng bắn data lớn vô Telegram! Chạy nhanh như ninja!`);
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server chạy tại http://localhost:${PORT} - Sẵn sàng bắn data lớn vô Telegram! Chạy nhanh như ninja!`);
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Cổng ${PORT} đang bị chiếm dụng, vui lòng đổi cổng khác!`);
+  } else {
+    console.error('❌ Lỗi server:', err);
+  }
 });
