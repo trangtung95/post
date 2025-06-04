@@ -4,8 +4,8 @@ const express = require('express')
 const axios = require('axios')
 const multer = require('multer')
 const fs = require('fs')
-require('dotenv').config()
 const FormData = require('form-data')
+require('dotenv').config()
 
 puppeteer.use(StealthPlugin())
 
@@ -13,7 +13,13 @@ const app = express()
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-const upload = multer({ dest: 'uploads/' }) // File tạm được lưu vào thư mục 'uploads'
+// Tạo thư mục uploads nếu chưa có
+const uploadDir = 'uploads'
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true })
+}
+
+const upload = multer({ dest: uploadDir }) // File tạm được lưu vào thư mục 'uploads'
 const PORT = process.env.PORT || 3000
 
 let page = null
@@ -34,7 +40,7 @@ async function sendTelegramMessage(text) {
     })
     return res.data.ok
   } catch (err) {
-    console.error('Error sending text:', err.message)
+    console.error('Error sending text:', err.response?.data || err.message)
     return false
   }
 }
@@ -52,16 +58,20 @@ async function sendTelegramFile(filePath, fileName) {
     formData.append('document', fs.createReadStream(filePath), fileName)
 
     const res = await axios.post(url, formData, {
-      headers: formData.getHeaders()
+      headers: formData.getHeaders(),
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
     })
 
     return res.data.ok
   } catch (err) {
-    console.error('Error sending file:', err.message)
+    console.error('Error sending file:', err.response?.data || err.message)
     return false
   } finally {
     // Dọn file sau khi gửi
-    fs.unlink(filePath, () => {})
+    fs.unlink(filePath, (e) => {
+      if (e) console.error('Error deleting temp file:', e.message)
+    })
   }
 }
 
@@ -91,9 +101,14 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   })
 })
 
-// Route thử nút
+// Route thử nút (nếu cần)
+// Nếu bạn dùng hàm sendTelegramMessageWithButtons, nhớ định nghĩa nó nhé
 app.get('/send-buttons', async (req, res) => {
   const text = "Tin nhắn có nút inline:"
+  // Giả sử bạn đã có hàm sendTelegramMessageWithButtons
+  if (typeof sendTelegramMessageWithButtons !== 'function') {
+    return res.status(501).send('Chưa có hàm sendTelegramMessageWithButtons')
+  }
   const success = await sendTelegramMessageWithButtons(text)
   res.status(success ? 200 : 500).send(success ? 'Đã gửi' : 'Lỗi')
 })
