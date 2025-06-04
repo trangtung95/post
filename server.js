@@ -5,6 +5,7 @@ const axios = require('axios')
 const multer = require('multer')
 const fs = require('fs')
 require('dotenv').config()
+const FormData = require('form-data')
 
 puppeteer.use(StealthPlugin())
 
